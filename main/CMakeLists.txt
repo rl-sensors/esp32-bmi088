@@ -1,2 +1,3 @@
-idf_component_register(SRCS "i2c_simple_main.c"
+idf_component_register(SRCS main.c
+        bmi088.c
                     INCLUDE_DIRS ".")
