@@ -30,6 +30,12 @@ menu "BMI088-test Configuration"
         help
             Accelerometer I2C address. 0x18 (SDO1 grounded) or 0x19 (SDO1 pulled high). 0x19 on the breakout from Aliexpress
 
+    config I2C_BMI088_GYRO_ADDR
+        hex "Gyro sensor address"
+        default 0x69
+        help
+            Gyro I2C address. 0x69 (default, SDO2 pulled high), or 0x68 (SDO2  grounded). 0x19 on the breakout from Aliexpress
+
     config BLINK_GPIO
         int "Blink GPIO number"
         range 0 48

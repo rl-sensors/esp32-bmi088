@@ -69,10 +69,23 @@ void app_main(void) {
         return;
     }
 
-    AccMss acc_mss;
+    begin = gyro_begin();
+    if (begin < 0) {
+        ESP_LOGE(TAG, "gyro_begin() failed with error %d", begin);
+        ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));
+        ESP_LOGI(TAG, "I2C de-initialized successfully");
+
+        return;
+    }
+
+    Axis3f acc_mss;
+    Axis3f gyro_rads;
     for (int i = 0; i < 1000; ++i) {
         acc_mss = acc_read_sensor();
         ESP_LOGI(TAG, "ACC: %.3f, %.3f, %.3f", acc_mss.x, acc_mss.y, acc_mss.z);
+        gyro_rads = gyro_read_sensor();
+        ESP_LOGI(TAG, "Gyro: %.3f, %.3f, %.3f", gyro_rads.x, gyro_rads.y, gyro_rads.z);
+
         vTaskDelay(pdMS_TO_TICKS(20));
     }
 

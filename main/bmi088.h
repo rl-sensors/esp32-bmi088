@@ -75,12 +75,67 @@
 #define ACC_TEMP_DATA_ADDR 0x22
 
 #define G 9.807f
+#define D2R (M_PI / 180.0f)
+
+
+#define BMI088_GYRO_SENSOR_ADDR      CONFIG_I2C_BMI088_GYRO_ADDR //0x69 (default, SDO2 pulled high), or 0x68 (SDO2  grounded)
+
+
+
+#define GYRO_CHIP_ID 0x0F
+#define GYRO_RESET_CMD 0xB6
+#define GYRO_ENABLE_DRDY_INT 0x80
+#define GYRO_DIS_DRDY_INT 0x00
+#define GYRO_INT_OPENDRAIN 0x02
+#define GYRO_INT_PUSHPULL 0x00
+#define GYRO_INT_LVL_HIGH 0x01
+#define GYRO_INT_LVL_LOW 0x00
+// registers
+#define GYRO_CHIP_ID_ADDR 0x00
+#define GYRO_CHIP_ID_MASK 0xFF
+#define GYRO_CHIP_ID_POS 0
+#define GYRO_DRDY_ADDR 0x0A
+#define GYRO_DRDY_MASK 0x80
+#define GYRO_DRDY_POS 7
+#define GYRO_RANGE_ADDR 0x0F
+#define GYRO_RANGE_MASK 0xFF
+#define GYRO_RANGE_POS 0
+#define GYRO_ODR_ADDR 0x10
+#define GYRO_ODR_MASK 0xFF
+#define GYRO_ODR_POS 0
+#define GYRO_SOFT_RESET_ADDR 0x14
+#define GYRO_SOFT_RESET_MASK 0xFF
+#define GYRO_SOFT_RESET_POS 0
+#define GYRO_INT_CNTRL_ADDR 0x15
+#define GYRO_INT_CNTRL_MASK 0xFF
+#define GYRO_INT_CNTRL_POS 0
+#define GYRO_INT3_IO_CTRL_ADDR 0x16
+#define GYRO_INT3_IO_CTRL_MASK 0x03
+#define GYRO_INT3_IO_CTRL_POS 0
+#define GYRO_INT4_IO_CTRL_ADDR 0x16
+#define GYRO_INT4_IO_CTRL_MASK 0x0C
+#define GYRO_INT4_IO_CTRL_POS 2
+#define GYRO_INT3_DRDY_ADDR 0x18
+#define GYRO_INT3_DRDY_MASK 0x01
+#define GYRO_INT3_DRDY_POS 0
+#define GYRO_INT4_DRDY_ADDR 0x18
+#define GYRO_INT4_DRDY_MASK 0x80
+#define GYRO_INT4_DRDY_POS 7
+#define GYRO_DATA_ADDR 0x02
 
 enum AccRange {
     RANGE_3G = 0x00,
     RANGE_6G = 0x01,
     RANGE_12G = 0x02,
     RANGE_24G = 0x03
+};
+
+enum GyroRange {
+    GYRO_RANGE_2000DPS,
+    GYRO_RANGE_1000DPS,
+    GYRO_RANGE_500DPS,
+    GYRO_RANGE_250DPS,
+    GYRO_RANGE_125DPS
 };
 
 enum AccOdr {
@@ -110,14 +165,26 @@ enum AccOdr {
     ODR_12_5HZ_BW_1HZ
 };
 
+enum GyroOdr {
+    ODR_2000HZ_BW_532HZ = 0x80,
+    ODR_2000HZ_BW_230HZ = 0x81,
+    ODR_1000HZ_BW_116HZ = 0x82,
+    ODR_400HZ_BW_47HZ = 0x83,
+    ODR_200HZ_BW_23HZ = 0x84,
+    ODR_100HZ_BW_12HZ = 0x85,
+    ODR_200HZ_BW_64HZ = 0x86,
+    ODR_100HZ_BW_32HZ = 0x87
+};
+
 typedef union {
     struct {
         float x;
         float y;
         float z;
     };
+
     float axis[3];
-} AccMss;
+} Axis3f;
 
 /* Macros to get and set register fields */
 #define GET_FIELD(regname,value) ((value & regname##_MASK) >> regname##_POS)
@@ -141,11 +208,25 @@ bool acc_self_test();
 
 bool acc_set_range(enum AccRange range);
 
-bool acc_set_ord(enum AccOdr odr);
+bool acc_set_odr(enum AccOdr odr);
 
-AccMss acc_read_sensor();
+Axis3f acc_read_sensor();
 
 bool acc_is_config_err();
+
 bool acc_is_fatal_err();
+
+
+bool is_correct_gyro_id();
+
+void gyro_soft_reset();
+
+bool gyro_set_odr(enum GyroOdr odr);
+
+bool gyro_set_range(enum GyroRange range);
+
+Axis3f gyro_read_sensor();
+
+int gyro_begin();
 
 #endif //ESP32_BMI088_BMI088_H

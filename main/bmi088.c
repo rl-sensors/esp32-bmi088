@@ -6,6 +6,7 @@
 extern char *TAG;
 
 static float accel_range_mss = 0.0f;
+static float gyro_range_rads = 0.0f;
 // transformation from sensor frame to right hand coordinate system
 const int16_t tX[3] = {1, 0, 0};
 const int16_t tY[3] = {0, -1, 0};
@@ -45,7 +46,7 @@ int8_t acc_begin() {
     vTaskDelay(pdMS_TO_TICKS(50));
 
     acc_set_range(RANGE_24G);
-    acc_set_ord(ODR_1600HZ_BW_280HZ);
+    acc_set_odr(ODR_1600HZ_BW_280HZ);
 
     if (acc_is_config_err()) {
         ESP_LOGE(TAG, "Config error!");
@@ -137,7 +138,7 @@ bool acc_set_range(enum AccRange range) {
     return false;
 }
 
-bool acc_set_ord(enum AccOdr odr) {
+bool acc_set_odr(enum AccOdr odr) {
     uint8_t write_reg = 0;
     uint8_t read_reg = 0;
     uint8_t value = 0;
@@ -258,10 +259,10 @@ bool acc_self_test() {
     uint8_t write_reg = 0;
     float accel_pos_mg[3];
     float accel_neg_mg[3];
-    AccMss acc_mss;
+    Axis3f acc_mss;
 
     acc_set_range(RANGE_24G);
-    acc_set_ord(ODR_1600HZ_BW_145HZ); // set 1.6 kHz ODR, 4x oversampling
+    acc_set_odr(ODR_1600HZ_BW_145HZ); // set 1.6 kHz ODR, 4x oversampling
     vTaskDelay(pdMS_TO_TICKS(3));
 
     write_reg = SET_FIELD(write_reg, ACC_SELF_TEST, ACC_POS_SELF_TEST); // enable self test, positive polarity
@@ -295,10 +296,10 @@ bool acc_self_test() {
     return false;
 }
 
-AccMss acc_read_sensor() {
+Axis3f acc_read_sensor() {
     int16_t accel[3];
     uint8_t _buffer[9];
-    AccMss acc_mss;
+    Axis3f acc_mss;
 
     register_read(BMI088_ACC_SENSOR_ADDR, ACC_ACCEL_DATA_ADDR, _buffer, 9);
     accel[0] = (_buffer[1] << 8) | _buffer[0];
@@ -343,6 +344,107 @@ bool acc_is_fatal_err() {
 }
 
 
+bool is_correct_gyro_id() {
+    uint8_t read_reg = 0;
+    register_read(BMI088_GYRO_SENSOR_ADDR, GYRO_CHIP_ID_ADDR, &read_reg, 1);
+    ESP_LOGI(TAG, "Received gyro chip id: %d", read_reg);
+    return read_reg == GYRO_CHIP_ID;
+}
+
+void gyro_soft_reset() {
+    uint8_t reg = 0;
+    reg = SET_FIELD(reg, GYRO_SOFT_RESET, GYRO_RESET_CMD);
+    register_write_byte(GYRO_SOFT_RESET_ADDR, reg, 1);
+    vTaskDelay(pdMS_TO_TICKS(50));
+}
+
+bool gyro_set_odr(enum GyroOdr odr) {
+    uint8_t write_reg = 0;
+    uint8_t read_reg = 0;
+
+    write_reg = SET_FIELD(write_reg, GYRO_ODR, odr);
+    register_write_byte(BMI088_GYRO_SENSOR_ADDR, GYRO_ODR_ADDR, write_reg);
+    vTaskDelay(pdMS_TO_TICKS(1));
+
+    register_read(BMI088_GYRO_SENSOR_ADDR, GYRO_ODR_ADDR, &read_reg, 1);
+
+    return read_reg == write_reg;
+}
+
+bool gyro_set_range(enum GyroRange range) {
+    uint8_t write_reg = 0;
+    uint8_t read_reg = 0;
+    write_reg = SET_FIELD(write_reg, GYRO_RANGE, range);
+    register_write_byte(BMI088_GYRO_SENSOR_ADDR, GYRO_RANGE_ADDR, write_reg);
+    vTaskDelay(pdMS_TO_TICKS(1));
+
+    register_read(BMI088_GYRO_SENSOR_ADDR, GYRO_RANGE_ADDR, &read_reg, 1);
+    if (read_reg == write_reg) {
+        switch (range) {
+            case GYRO_RANGE_125DPS: {
+                gyro_range_rads = 125.0f * D2R;
+                break;
+            }
+            case GYRO_RANGE_250DPS: {
+                gyro_range_rads = 250.0f * D2R;
+                break;
+            }
+            case GYRO_RANGE_500DPS: {
+                gyro_range_rads = 500.0f * D2R;
+                break;
+            }
+            case GYRO_RANGE_1000DPS: {
+                gyro_range_rads = 1000.0f * D2R;
+                break;
+            }
+            case GYRO_RANGE_2000DPS: {
+                gyro_range_rads = 2000.0f * D2R;
+                break;
+            }
+        }
+        return true;
+    }
+
+    return false;
+}
+
+Axis3f gyro_read_sensor() {
+    uint8_t _buffer[6];
+    int16_t gyro[3];
+    Axis3f gyro_rads;
+    register_read(BMI088_GYRO_SENSOR_ADDR, GYRO_DATA_ADDR, _buffer, 6);
+    gyro[0] = (_buffer[1] << 8) | _buffer[0];
+    gyro[1] = (_buffer[3] << 8) | _buffer[2];
+    gyro[2] = (_buffer[5] << 8) | _buffer[4];
+    gyro_rads.axis[0] = (float) (gyro[0] * tX[0] + gyro[1] * tX[1] + gyro[2] * tX[2]) / 32767.0f * gyro_range_rads;
+    gyro_rads.axis[1] = (float) (gyro[0] * tY[0] + gyro[1] * tY[1] + gyro[2] * tY[2]) / 32767.0f * gyro_range_rads;
+    gyro_rads.axis[2] = (float) (gyro[0] * tZ[0] + gyro[1] * tZ[1] + gyro[2] * tZ[2]) / 32767.0f * gyro_range_rads;
+
+    return gyro_rads;
+}
+
+int gyro_begin() {
+    if (!is_correct_gyro_id()) {
+        ESP_LOGE(TAG, "Gyro ID not found");
+        return -1;
+    }
+
+    gyro_soft_reset();
+
+    if (!gyro_set_range(GYRO_RANGE_2000DPS)) {
+        ESP_LOGE(TAG, "Gyro set range 2000DPS failed");
+        return -2;
+    }
+
+    if (!gyro_set_odr(ODR_2000HZ_BW_532HZ)) {
+        ESP_LOGE(TAG, "Gyro set odr 2000HZ_BW_532HZ failed");
+        return -4;
+    }
+
+    return 1;
+}
+
+
 esp_err_t register_read(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, size_t len) {
     return i2c_master_write_read_device(CONFIG_I2C_MASTER_NUM, device_addr, &reg_addr, 1, data, len,
                                         pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS));
@@ -357,3 +459,4 @@ esp_err_t register_write_byte(uint8_t device_addr, uint8_t reg_addr, uint8_t dat
 
     return ret;
 }
+
