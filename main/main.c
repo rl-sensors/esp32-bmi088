@@ -57,14 +57,23 @@ static esp_err_t i2c_master_init(void)
 
 
 void app_main(void) {
-    uint8_t data[2];
     ESP_ERROR_CHECK(i2c_master_init());
     ESP_LOGI(TAG, "I2C initialized successfully");
 
-    if (isCorrectAccId()) {
-        ESP_LOGI(TAG, "Found BMI088 ID");
-    } else {
-        ESP_LOGE(TAG, "Cannot find BMI088.");
+    int begin = acc_begin();
+    if (begin < 0) {
+        ESP_LOGE(TAG, "acc_begin() failed with error %d", begin);
+        ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));
+        ESP_LOGI(TAG, "I2C de-initialized successfully");
+
+        return;
+    }
+
+    AccMss acc_mss;
+    for (int i = 0; i < 1000; ++i) {
+        acc_mss = acc_read_sensor();
+        ESP_LOGI(TAG, "ACC: %.3f, %.3f, %.3f", acc_mss.x, acc_mss.y, acc_mss.z);
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 
     ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));

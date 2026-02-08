@@ -24,6 +24,12 @@ menu "BMI088-test Configuration"
         help
             GPIO number for I2C Master data line.
 
+    config I2C_BMI088_ACC_ADDR
+        hex "Accelerometer sensor address"
+        default 0x19
+        help
+            Accelerometer I2C address. 0x18 (SDO1 grounded) or 0x19 (SDO1 pulled high). 0x19 on the breakout from Aliexpress
+
     config BLINK_GPIO
         int "Blink GPIO number"
         range 0 48

@@ -7,10 +7,11 @@
 
 #include "esp_log.h"
 #include "driver/i2c.h"
+#include "math.h"
 
 #define I2C_MASTER_TIMEOUT_MS       1000
 
-#define BMI088_ACC_SENSOR_ADDR              0x19 // 0x18 (SDO1 grounded) or 0x19 (SDO1 pulled high)
+#define BMI088_ACC_SENSOR_ADDR      CONFIG_I2C_BMI088_ACC_ADDR // 0x18 (SDO1 grounded) or 0x19 (SDO1 pulled high)
 
 #define ACC_CHIP_ID 0x1E
 #define ACC_RESET_CMD 0xB6
@@ -73,10 +74,78 @@
 #define ACC_ACCEL_DATA_ADDR 0x12
 #define ACC_TEMP_DATA_ADDR 0x22
 
+#define G 9.807f
+
+enum AccRange {
+    RANGE_3G = 0x00,
+    RANGE_6G = 0x01,
+    RANGE_12G = 0x02,
+    RANGE_24G = 0x03
+};
+
+enum AccOdr {
+    ODR_1600HZ_BW_280HZ,
+    ODR_1600HZ_BW_234HZ,
+    ODR_1600HZ_BW_145HZ,
+    ODR_800HZ_BW_230HZ,
+    ODR_800HZ_BW_140HZ,
+    ODR_800HZ_BW_80HZ,
+    ODR_400HZ_BW_145HZ,
+    ODR_400HZ_BW_75HZ,
+    ODR_400HZ_BW_40HZ,
+    ODR_200HZ_BW_80HZ,
+    ODR_200HZ_BW_38HZ,
+    ODR_200HZ_BW_20HZ,
+    ODR_100HZ_BW_40HZ,
+    ODR_100HZ_BW_19HZ,
+    ODR_100HZ_BW_10HZ,
+    ODR_50HZ_BW_20HZ,
+    ODR_50HZ_BW_9HZ,
+    ODR_50HZ_BW_5HZ,
+    ODR_25HZ_BW_10HZ,
+    ODR_25HZ_BW_5HZ,
+    ODR_25HZ_BW_3HZ,
+    ODR_12_5HZ_BW_5HZ,
+    ODR_12_5HZ_BW_2HZ,
+    ODR_12_5HZ_BW_1HZ
+};
+
+typedef union {
+    struct {
+        float x;
+        float y;
+        float z;
+    };
+    float axis[3];
+} AccMss;
+
+/* Macros to get and set register fields */
+#define GET_FIELD(regname,value) ((value & regname##_MASK) >> regname##_POS)
+#define	SET_FIELD(regval,regname,value) ((regval & ~regname##_MASK) | ((value << regname##_POS) & regname##_MASK))
+
 esp_err_t register_read(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, size_t len);
 
 esp_err_t register_write_byte(uint8_t device_addr, uint8_t reg_addr, uint8_t data);
 
-bool isCorrectAccId();
+int8_t acc_begin();
+
+bool is_correct_acc_id();
+
+void acc_soft_reset();
+
+bool acc_set_power(bool enable);
+
+bool acc_set_mode(bool active);
+
+bool acc_self_test();
+
+bool acc_set_range(enum AccRange range);
+
+bool acc_set_ord(enum AccOdr odr);
+
+AccMss acc_read_sensor();
+
+bool acc_is_config_err();
+bool acc_is_fatal_err();
 
 #endif //ESP32_BMI088_BMI088_H
