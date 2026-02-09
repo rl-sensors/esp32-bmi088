@@ -37,6 +37,8 @@ const char *TAG = "ESP32-BMI088";
 #define I2C_MASTER_TIMEOUT_MS       1000
 
 
+extern QueueHandle_t bmi_queue;
+
 static esp_err_t i2c_master_init(void)
 {
     int i2c_master_port = I2C_MASTER_NUM;
@@ -60,33 +62,18 @@ void app_main(void) {
     ESP_ERROR_CHECK(i2c_master_init());
     ESP_LOGI(TAG, "I2C initialized successfully");
 
-    int begin = acc_begin();
-    if (begin < 0) {
-        ESP_LOGE(TAG, "acc_begin() failed with error %d", begin);
-        ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));
-        ESP_LOGI(TAG, "I2C de-initialized successfully");
+    xTaskCreate( bmi088_task, "BMI088 Task", 4096, NULL, 10, NULL);
 
-        return;
-    }
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    BmiData bmi_data;
 
-    begin = gyro_begin();
-    if (begin < 0) {
-        ESP_LOGE(TAG, "gyro_begin() failed with error %d", begin);
-        ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));
-        ESP_LOGI(TAG, "I2C de-initialized successfully");
+    while (true) {
+        if (xQueueReceive(bmi_queue, &bmi_data, portMAX_DELAY) == pdTRUE) {
+            ESP_LOGI(TAG, "ACC: %.3f, %.3f, %.3f", bmi_data.acc.x, bmi_data.acc.y, bmi_data.acc.z);
+            ESP_LOGI(TAG, "Gyro: %.3f, %.3f, %.3f", bmi_data.gyro.x, bmi_data.gyro.y, bmi_data.gyro.z);
+        }
 
-        return;
-    }
-
-    Axis3f acc_mss;
-    Axis3f gyro_rads;
-    for (int i = 0; i < 1000; ++i) {
-        acc_mss = acc_read_sensor();
-        ESP_LOGI(TAG, "ACC: %.3f, %.3f, %.3f", acc_mss.x, acc_mss.y, acc_mss.z);
-        gyro_rads = gyro_read_sensor();
-        ESP_LOGI(TAG, "Gyro: %.3f, %.3f, %.3f", gyro_rads.x, gyro_rads.y, gyro_rads.z);
-
-        vTaskDelay(pdMS_TO_TICKS(20));
+        vTaskDelay(pdMS_TO_TICKS(50)); // just to make the log re
     }
 
     ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));

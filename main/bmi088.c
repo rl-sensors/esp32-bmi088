@@ -5,12 +5,46 @@
 
 extern char *TAG;
 
+QueueHandle_t bmi_queue;
+
 static float accel_range_mss = 0.0f;
 static float gyro_range_rads = 0.0f;
 // transformation from sensor frame to right hand coordinate system
 const int16_t tX[3] = {1, 0, 0};
 const int16_t tY[3] = {0, -1, 0};
 const int16_t tZ[3] = {0, 0, -1};
+
+
+void bmi088_task(void *pvParams) {
+    BmiData bmi_data;
+    bmi_queue = xQueueCreate(1, sizeof(bmi_data));
+
+    int begin = acc_begin();
+    if (begin < 0) {
+        ESP_LOGE(TAG, "\n\n\n\n!!!!acc_begin() failed with error %d\n\n\n\n", begin);
+    }
+
+    begin = gyro_begin();
+    if (begin < 0) {
+        ESP_LOGE(TAG, "\n\n\n\n!!!!gyro_begin() failed with error %d\n\n\n\n", begin);
+    }
+
+    uint8_t delay = CONFIG_READ_SENSOR_DELAY_MS;
+    TickType_t xLastWakeTime;
+    const TickType_t xDelay = pdMS_TO_TICKS(delay);
+
+    while (true) {
+        xLastWakeTime = xTaskGetTickCount();
+
+        bmi_data.acc = acc_read_sensor();
+        bmi_data.gyro = gyro_read_sensor();
+
+        xQueueOverwrite(bmi_queue, (void *) &bmi_data);
+
+        vTaskDelayUntil(&xLastWakeTime, xDelay);
+    }
+
+}
 
 int8_t acc_begin() {
     if (!is_correct_acc_id()) {

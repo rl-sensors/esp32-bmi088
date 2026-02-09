@@ -36,6 +36,12 @@ menu "BMI088-test Configuration"
         help
             Gyro I2C address. 0x69 (default, SDO2 pulled high), or 0x68 (SDO2  grounded). 0x19 on the breakout from Aliexpress
 
+    config READ_SENSOR_DELAY_MS
+        int "Delay between sensor reads in milliseconds"
+        default 10
+        help
+            Determines the frequency at which the message with the new sensor readings are enqueued.
+
     config BLINK_GPIO
         int "Blink GPIO number"
         range 0 48

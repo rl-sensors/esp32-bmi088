@@ -186,9 +186,16 @@ typedef union {
     float axis[3];
 } Axis3f;
 
+typedef struct {
+    Axis3f acc;
+    Axis3f gyro;
+} BmiData;
+
 /* Macros to get and set register fields */
 #define GET_FIELD(regname,value) ((value & regname##_MASK) >> regname##_POS)
 #define	SET_FIELD(regval,regname,value) ((regval & ~regname##_MASK) | ((value << regname##_POS) & regname##_MASK))
+
+void bmi088_task(void *pvParams);
 
 esp_err_t register_read(uint8_t device_addr, uint8_t reg_addr, uint8_t *data, size_t len);
 
