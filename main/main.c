@@ -73,7 +73,7 @@ void app_main(void) {
             ESP_LOGI(TAG, "Gyro: %.3f, %.3f, %.3f", bmi_data.gyro.x, bmi_data.gyro.y, bmi_data.gyro.z);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(50)); // just to make the log re
+        vTaskDelay(pdMS_TO_TICKS(50)); // just to make the log readable
     }
 
     ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));
